@@ -1,0 +1,48 @@
+# render.yaml — Deploy all 3 services on Render
+# Push this file + all .py files to a GitHub repo, then connect to Render
+
+services:
+
+  # ── 1. Web API (FastAPI) ───────────────────────────────────────────────────
+  - type: web
+    name: movie-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: movie-db
+          property: connectionString
+    autoDeploy: true
+
+  # ── 2. Background Worker (Scraper — runs 24/7) ─────────────────────────────
+  - type: worker
+    name: movie-scraper
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scraper.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: movie-db
+          property: connectionString
+    autoDeploy: true
+
+  # ── 3. Cron Job (Link Checker — every 6 hours) ─────────────────────────────
+  - type: cron
+    name: link-checker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python link_checker.py
+    schedule: "0 */6 * * *"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: movie-db
+          property: connectionString
+
+# ── PostgreSQL Database ────────────────────────────────────────────────────────
+databases:
+  - name: movie-db
+    plan: free
